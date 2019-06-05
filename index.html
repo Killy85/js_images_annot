@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Page Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" media="screen" href="style/main.css">
+    <!--<script src="main.js"></script>-->
+</head>
+
+<body>
+    <div class="row">
+        <div class="column">
+            <div id="canvasWrapper">
+                <canvas id="canvas">
+                </canvas>
+            </div><BR>
+            <button type="button" onclick="myFunction()">
+                Add rectangle
+            </button>
+        </div>
+        <div class="column">
+            <div id="annotation_list">
+            </div>
+            <button type="button" onclick="cropImage()">
+                    Validate
+                </button>
+        </div>
+    </div>
+
+    <script src="lib/fabric.min.js"></script>
+    <script>
+        var global_index = -1
+        var global_width = 0
+        var global_heigth = 0
+
+        function updateView() {
+            var currentDiv = document.getElementById('annotation_list');
+            rectangles.forEach(
+                function (elem, index) {
+                    if (index > global_index) {
+                        console.log(elem)
+                        var false_index = index + 1
+                        var input = document.createElement('input')
+                        input.id = false_index.toString()
+                        var label = document.createElement('label')
+                        label.for = false_index.toString()
+                        label.innerHTML = "Label for box" + false_index.toString()
+                        currentDiv.appendChild(label)
+                        currentDiv.appendChild(input)
+                        global_index++;
+                    }
+                }
+            )
+        }
+
+        var rectangles = new Array()
+        Object.defineProperty(rectangles, "push", {
+            configurable: true,
+            enumerable: false,
+            writable: true, // Previous values based on Object.getOwnPropertyDescriptor(Array.prototype, "push")
+            value: function (...args) {
+                let result = Array.prototype.push.apply(this,
+                    args
+                    ); // Original push() implementation based on https://github.com/vuejs/vue/blob/f2b476d4f4f685d84b4957e6c805740597945cde/src/core/observer/array.js and https://github.com/vuejs/vue/blob/daed1e73557d57df244ad8d46c9afff7208c9a2d/src/core/util/lang.js
+
+                updateView();
+
+                return result; // Original push() implementation
+            }
+        });
+        var img = new Image();
+        img.onload = function () {
+            var heigth = (window.innerHeight/2 )-50;
+            var width = (window.innerWidth /2)- 50;
+            var ratio_heigth = this.height / heigth
+            var ratio_width = this.width / width
+
+            global_width = width
+            global_heigth = heigth
+            var canvas = new fabric.Canvas('canvas', {
+                width: width,
+                height: heigth,
+                backgroundColor: null
+            });
+            document.getElementById("canvas").fabric = canvas;
+            var img = "img/oui.jpg";
+
+            canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+                // Optionally add an opacity lvl to the image
+                backgroundImageOpacity: 0.5,
+                scaleX: 1 / ratio_width, //new update
+                scaleY: 1 / ratio_heigth, //new update
+            });
+
+            canvas.on('object:scaling', (e) => {
+                var o = e.target;
+                if (!o.strokeWidthUnscaled && o.strokeWidth) {
+                    o.strokeWidthUnscaled = 10;
+                }
+                if (o.strokeWidthUnscaled) {
+                    o.strokeWidth = o.strokeWidthUnscaled / o.scaleX;
+                }
+            })
+        }
+        img.src = 'img/oui.jpg';
+
+        function myFunction() {
+            var canvas = document.getElementById("canvas").fabric;
+            var rect = new fabric.Rect({
+                top: 100,
+                left: 100,
+                width: 60,
+                height: 70,
+                stroke: 'black',
+                strokeWidth: 10,
+                fill: 'rgba(0,0,0,0)'
+            });
+            rectangles.push(rect)
+            canvas.add(rect);
+        }
+
+        function cropImage(){
+            var json_to_send = {
+                        id_image: 'To Be defined',
+                        display_width: global_width,
+                        display_heigth: global_heigth
+                    }
+                    console.log("Here we will call an api with a json")
+                    console.log('containing the id of the image, the display size')
+                    console.log("the different boxes created with the corners and the linked label")
+
+                    var objects = {}
+            rectangles.forEach(
+                function(elem, index){
+                    
+                    var currentInput = document.getElementById((index+1).toString());
+                    objects[index] = {
+                        top: elem.top,
+                        left: elem.left,
+                        width: elem.width,
+                        height:elem.height,
+                        label: currentInput.value
+                    }
+
+                }
+            )
+            json_to_send['boxes'] = objects
+            console.log(json_to_send)
+        }
+    </script>
+</body>
+
+</html>
